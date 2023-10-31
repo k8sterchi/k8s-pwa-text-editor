@@ -20,7 +20,9 @@
       <script>
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker
-            .register('/service-worker.js')
+            .register('/service-worker.js', {
+              scope: '/' // Change the scope to encompass the root
+            })
             .then((registration) => {
               console.log('Service Worker registered with scope:', registration.scope);
             })
