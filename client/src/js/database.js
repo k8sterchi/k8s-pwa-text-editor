@@ -1,19 +1,26 @@
 import { openDB } from 'idb';
 
-const initdb = async () =>
-  openDB('jate', 1, {
-    upgrade(db) {
-      if (db.objectStoreNames.contains('jate')) {
-        console.log('jate database already exists');
-        return;
-      }
-      db.createObjectStore('jate', { keyPath: 'id', autoIncrement: true });
-      console.log('jate database created');
-    },
-  });
+export const initdb = async () => {
+  try {
+    const db = await openDB('jate', 1);
+    if (!db.objectStoreNames.contains('jate')) {
+      const versionChange = db.transaction.versionchange;
+      versionChange.addEventListener('complete', (event) => {
+        const upgradedDB = event.target.result;
+        upgradedDB.createObjectStore('jate', { keyPath: 'id', autoIncrement: true });
+        console.log('jate database created');
+      });
+    } else {
+      console.log('jate database already exists');
+    }
+  } catch (error) {
+    console.error('Error initializing the database:', error);
+    throw error; // Re-throw the error for handling in the calling code.
+  }
+};
 
-// TODO: Add logic to a method that accepts some content and adds it to the database
-export const putDb = async (content) => {
+// Save content to IndexedDB
+export const addItem = async (content) => {
   const db = await openDB('jate', 1);
   const tx = db.transaction('jate', 'readwrite');
   const store = tx.objectStore('jate');
@@ -27,17 +34,24 @@ export const putDb = async (content) => {
   }
 };
 
-// TODO: Add logic for a method that gets all the content from the database
-export const getDb = async () => {
+// Retrieve content from IndexedDB
+export const getItem = async () => {
   const db = await openDB('jate', 1);
   const tx = db.transaction('jate', 'readonly');
   const store = tx.objectStore('jate');
 
   try {
     const entries = await store.getAll();
-    return entries.map((entry) => entry.content);
+    if (entries.length > 0) {
+      return entries[entries.length - 1].content;
+    }
+    return null;
   } catch (error) {
     console.error('Error getting content:', error);
-    return [];
+    return null;
   }
 };
+
+// Export the getDb and putDb functions
+export const getDb = getItem;
+export const putDb = addItem;
